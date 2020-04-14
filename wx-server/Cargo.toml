@@ -7,3 +7,15 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+itertools = "0.9"
+sha-1 = "0.8"
+base64 = "0.12"
+thiserror = "1.0"
+openssl = "0.10"
+byteorder = "1"
+xmltree = "0.10"
+log = "0.4"
+actix-web = "2"
+actix-rt = "1"
+serde = {version = "1.0", features = ["derive"]}
+tokio = { version = "0.2", features = ["full"] }
