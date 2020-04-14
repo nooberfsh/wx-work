@@ -9,11 +9,13 @@ use crate::crypto::Crypto;
 use crate::{App, RecvMessage};
 
 pub struct Builder<T: App> {
-    app: Option<T>,
+    app: T,
+    token: String,
+    encoding_aes_key: String,
 }
 
 pub struct Server<T: App> {
-    app: Option<T>,
+    inner: Option<ServerInner<T>>,
 }
 
 struct ServerInner<T: App> {
@@ -36,17 +38,43 @@ struct RecvParams {
     nonce: u64,
 }
 
-impl<T: App> Server<T> {
-    pub fn run(&self) {}
+impl<T: App> Builder<T> {
+    pub fn new(app: T, token: String, encoding_aes_key: String) -> Self {
+        Builder {
+            app,
+            token,
+            encoding_aes_key,
+        }
+    }
+
+    pub fn build(self) -> crate::Result<Server<T>> {
+        let app = self.app;
+        let crypto = Crypto::new(self.token, self.encoding_aes_key)?;
+        let inner = ServerInner { app, crypto };
+        Ok(Server { inner: Some(inner) })
+    }
 }
 
-//#[actix_rt::main]
-//async fn main() -> std::io::Result<()> {
-//    HttpServer::new(|| App::new().service(index).service(validate).service(recv))
-//        .bind("0.0.0.0:12349")?
-//        .run()
-//        .await
-//}
+impl<T: App> Server<T> {
+    pub fn run(mut self) -> std::io::Result<()> {
+        let server = self.inner.take().unwrap();
+        run(server)
+    }
+}
+
+#[actix_rt::main]
+async fn run<T: App>(server: ServerInner<T>) -> std::io::Result<()> {
+    let data = web::Data::new(server);
+    HttpServer::new(move || {
+        ActixApp::new()
+            .app_data(data.clone())
+            .route("/", web::get().to(validate::<T>))
+            .route("/", web::post().to(recv::<T>))
+    })
+    .bind("0.0.0.0:12349")? // TODO: specify port in builder
+    .run()
+    .await
+}
 
 async fn validate<T: App>(
     info: web::Query<ValidateParams>,

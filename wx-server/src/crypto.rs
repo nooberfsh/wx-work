@@ -18,8 +18,8 @@ pub(crate) struct Payload {
 }
 
 impl Crypto {
-    pub(crate) fn new(token: String, encoding_aes_key: impl AsRef<[u8]>) -> Result<Crypto> {
-        let bytes = encoding_aes_key.as_ref();
+    pub(crate) fn new(token: String, encoding_aes_key: String) -> Result<Crypto> {
+        let bytes = encoding_aes_key.as_bytes();
         if bytes.len() != 43 {
             return Err(Error::InvalidAesKey);
         }
@@ -89,12 +89,12 @@ mod tests {
     fn test_invalid_aes_key() {
         let token = "QDG6eK";
         let k1 = "123";
-        let r1 = Crypto::new(token.to_string(), k1);
+        let r1 = Crypto::new(token.to_string(), k1.to_string());
         assert!(r1.is_err());
 
         // invalid base64: invalid last byte
         let k2 = "4Ma3YBrSBbX2aez8MJpXGBne5LSDwgGqHbhM9WPYIwC";
-        let r2 = Crypto::new(token.to_string(), k2);
+        let r2 = Crypto::new(token.to_string(), k2.to_string());
         assert!(r2.is_err());
     }
 
@@ -106,7 +106,7 @@ mod tests {
         let timestamps = 1409659813;
         let nonce = 1372623149;
 
-        let crypto = Crypto::new(token.to_string(), encoding_aes_key).unwrap();
+        let crypto = Crypto::new(token.to_string(), encoding_aes_key.to_string()).unwrap();
 
         let sign = crypto.sign(msg_encrypt.to_string(), timestamps, nonce);
         assert_eq!(sign, "477715d11cdb4164915debcba66cb864d751f3e6");
@@ -121,7 +121,7 @@ mod tests {
         let msg_data: &str = "94966531020182955848408";
         let msg_recv_id: &str = "ww6a112864f8022910";
 
-        let crypto = Crypto::new(token.to_string(), encoding_aes_key).unwrap();
+        let crypto = Crypto::new(token.to_string(), encoding_aes_key.to_string()).unwrap();
 
         let msg = crypto.decrypt(msg_encrypt).unwrap();
         let data = String::from_utf8(msg.data).unwrap();
@@ -137,7 +137,7 @@ mod tests {
         let data = "foobarbaz123456788";
         let recv_id = "ww6a112864f8022910";
 
-        let crypto = Crypto::new(token.to_string(), encoding_aes_key).unwrap();
+        let crypto = Crypto::new(token.to_string(), encoding_aes_key.to_string()).unwrap();
 
         let msg = Payload {
             data: Vec::from(data),
