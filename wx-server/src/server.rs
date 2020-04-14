@@ -1,6 +1,4 @@
-use actix_web::{
-    web, App as ActixApp, Error, HttpResponse, HttpServer
-};
+use actix_web::{web, App as ActixApp, Error, HttpResponse, HttpServer};
 use futures::StreamExt;
 use log::{info, warn};
 use serde::Deserialize;
@@ -15,10 +13,6 @@ pub struct Builder<T: App> {
 }
 
 pub struct Server<T: App> {
-    inner: Option<ServerInner<T>>,
-}
-
-struct ServerInner<T: App> {
     app: T,
     crypto: Crypto,
 }
@@ -50,19 +44,18 @@ impl<T: App> Builder<T> {
     pub fn build(self) -> crate::Result<Server<T>> {
         let app = self.app;
         let crypto = Crypto::new(self.token, self.encoding_aes_key)?;
-        let inner = ServerInner { app, crypto };
-        Ok(Server { inner: Some(inner) })
+        let s = Server { app, crypto };
+        Ok(s)
     }
 }
 
 impl<T: App> Server<T> {
     #[actix_rt::main]
-    pub async fn run(mut self) -> std::io::Result<()> {
-        let server = self.inner.take().unwrap();
-        let data = web::Data::new(server);
+    pub async fn run(self) -> std::io::Result<()> {
+        let server = web::Data::new(self);
         HttpServer::new(move || {
             ActixApp::new()
-                .app_data(data.clone())
+                .app_data(server.clone())
                 .route("/", web::get().to(validate::<T>))
                 .route("/", web::post().to(recv::<T>))
         })
@@ -74,7 +67,7 @@ impl<T: App> Server<T> {
 
 async fn validate<T: App>(
     info: web::Query<ValidateParams>,
-    server: web::Data<ServerInner<T>>,
+    server: web::Data<Server<T>>,
 ) -> HttpResponse {
     info!("validate request: params: {:?}", info);
 
@@ -93,7 +86,7 @@ async fn validate<T: App>(
 async fn recv<T: App>(
     info: web::Query<RecvParams>,
     mut body: web::Payload,
-    server: web::Data<ServerInner<T>>,
+    server: web::Data<Server<T>>,
 ) -> Result<HttpResponse, Error> {
     info!("receive request: params: {:?}", info);
 
