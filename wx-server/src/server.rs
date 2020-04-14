@@ -10,11 +10,13 @@ pub struct Builder<T: App> {
     app: T,
     token: String,
     encoding_aes_key: String,
+    port: Option<u16>, // optional, default is 12349
 }
 
 pub struct Server<T: App> {
     app: T,
     crypto: Crypto,
+    port: u16,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,13 +40,20 @@ impl<T: App> Builder<T> {
             app,
             token,
             encoding_aes_key,
+            port: None,
         }
+    }
+
+    pub fn port(mut self, p: u16) -> Self {
+        self.port = Some(p);
+        self
     }
 
     pub fn build(self) -> crate::Result<Server<T>> {
         let app = self.app;
         let crypto = Crypto::new(self.token, self.encoding_aes_key)?;
-        let s = Server { app, crypto };
+        let port = self.port.unwrap_or(12349);
+        let s = Server { app, crypto, port };
         Ok(s)
     }
 }
@@ -53,13 +62,14 @@ impl<T: App> Server<T> {
     #[actix_rt::main]
     pub async fn run(self) -> std::io::Result<()> {
         let server = web::Data::new(self);
+        let addr = format!("0.0.0.0:{}", server.port);
         HttpServer::new(move || {
             ActixApp::new()
                 .app_data(server.clone())
                 .route("/", web::get().to(validate::<T>))
                 .route("/", web::post().to(recv::<T>))
         })
-        .bind("0.0.0.0:12349")? // TODO: specify port in builder
+        .bind(addr)?
         .run()
         .await
     }
