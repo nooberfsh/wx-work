@@ -141,6 +141,7 @@ fn current_timestamp() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
 }
 
+#[inline]
 fn gen_nonce() -> u64 {
-    todo!()
+    rand::random()
 }
