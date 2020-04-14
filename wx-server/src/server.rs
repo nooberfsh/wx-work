@@ -56,24 +56,20 @@ impl<T: App> Builder<T> {
 }
 
 impl<T: App> Server<T> {
-    pub fn run(mut self) -> std::io::Result<()> {
+    #[actix_rt::main]
+    pub async fn run(mut self) -> std::io::Result<()> {
         let server = self.inner.take().unwrap();
-        run(server)
+        let data = web::Data::new(server);
+        HttpServer::new(move || {
+            ActixApp::new()
+                .app_data(data.clone())
+                .route("/", web::get().to(validate::<T>))
+                .route("/", web::post().to(recv::<T>))
+        })
+        .bind("0.0.0.0:12349")? // TODO: specify port in builder
+        .run()
+        .await
     }
-}
-
-#[actix_rt::main]
-async fn run<T: App>(server: ServerInner<T>) -> std::io::Result<()> {
-    let data = web::Data::new(server);
-    HttpServer::new(move || {
-        ActixApp::new()
-            .app_data(data.clone())
-            .route("/", web::get().to(validate::<T>))
-            .route("/", web::post().to(recv::<T>))
-    })
-    .bind("0.0.0.0:12349")? // TODO: specify port in builder
-    .run()
-    .await
 }
 
 async fn validate<T: App>(
