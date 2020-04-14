@@ -1,7 +1,7 @@
 use actix_web::{
-    error, get, post, web, App as ActixApp, Error, HttpResponse, HttpServer, Responder,
+    web, App as ActixApp, Error, HttpResponse, HttpServer
 };
-use futures::{Future, Stream, StreamExt};
+use futures::StreamExt;
 use log::{info, warn};
 use serde::Deserialize;
 
@@ -103,7 +103,6 @@ async fn recv<T: App>(
     }
 
     let crypto = &server.crypto;
-    let app = &server.app;
     let msg = match RecvMessage::parse(
         &bytes,
         &crypto,
