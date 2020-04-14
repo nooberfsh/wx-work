@@ -17,5 +17,6 @@ xmltree = "0.10"
 log = "0.4"
 actix-web = "2"
 actix-rt = "1"
+async-trait = "0.1"
 serde = {version = "1.0", features = ["derive"]}
 tokio = { version = "0.2", features = ["full"] }
