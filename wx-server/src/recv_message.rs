@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use xmltree::{Element};
+use xmltree::Element;
 
 use crate::{crypto::Crypto, Error, Result};
 
@@ -27,7 +27,6 @@ pub enum RecvMessageType {
     Link(Link),
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Picture {
     pub pic_url: String,
@@ -45,7 +44,6 @@ pub struct RecvVideo {
     pub media_id: String,
     pub thumb_media_id: String,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Location {
@@ -90,14 +88,19 @@ macro_rules! try_field_parse {
     };
 }
 
-
 fn fetch<'a>(name: &str, element: &'a Element) -> Option<&'a str> {
     let child = element.get_child(name)?;
     child.children.get(0)?.as_text()
 }
 
 impl RecvMessage {
-    pub(crate) fn parse(data: impl AsRef<[u8]>, crypto: &Crypto, timestamp: u64, nonce: u64, msg_signature: &str) -> Result<RecvMessage> {
+    pub(crate) fn parse(
+        data: impl AsRef<[u8]>,
+        crypto: &Crypto,
+        timestamp: u64,
+        nonce: u64,
+        msg_signature: &str,
+    ) -> Result<RecvMessage> {
         let xml = Element::parse(data.as_ref())
             .map_err(|e| Error::MessageParseFailed(format!("{}", e)))?;
 
@@ -108,7 +111,7 @@ impl RecvMessage {
         let sign = crypto.sign(msg_encrypt.clone(), timestamp, nonce);
 
         if sign != msg_signature {
-            return Err(Error::InvalidMessage)
+            return Err(Error::InvalidMessage);
         }
 
         let msg = crypto.decrypt(&msg_encrypt)?.data;
@@ -138,4 +141,3 @@ impl RecvMessage {
         })
     }
 }
-

@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 
-use crate::{SendMessage, RecvMessage};
+use crate::{RecvMessage, SendMessage};
 
 #[async_trait]
-trait App {
+pub trait App {
     async fn handle(&self, msg: RecvMessage) -> Option<SendMessage>;
 }

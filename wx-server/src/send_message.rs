@@ -1,7 +1,7 @@
 use xmltree::{Element, XMLNode};
 
-use crate::Result;
 use crate::crypto::{Crypto, Payload};
+use crate::Result;
 
 #[derive(Debug, Clone)]
 pub struct SendMessage {
@@ -88,7 +88,6 @@ impl SendMessage {
         Ok(ret)
     }
 }
-
 
 ///////////////////////////// helper functions ///////////////////////////////////////////////
 

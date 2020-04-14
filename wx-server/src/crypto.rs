@@ -76,8 +76,8 @@ impl Crypto {
 
         Ok(Payload {
             data: Vec::from(&decrypted[20..rcv_id_idx]),
-            receive_id: Vec::from( & decrypted[rcv_id_idx..]),
-    })
+            receive_id: Vec::from(&decrypted[rcv_id_idx..]),
+        })
     }
 }
 
@@ -139,7 +139,10 @@ mod tests {
 
         let crypto = Crypto::new(token.to_string(), encoding_aes_key).unwrap();
 
-        let msg = Payload {data: Vec::from(data), receive_id: Vec::from(recv_id)};
+        let msg = Payload {
+            data: Vec::from(data),
+            receive_id: Vec::from(recv_id),
+        };
         let encrypted = crypto.encrypt(msg).unwrap();
 
         let msg = crypto.decrypt(encrypted).unwrap();
