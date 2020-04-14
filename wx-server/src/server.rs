@@ -2,6 +2,7 @@ use actix_web::{web, App as ActixApp, Error, HttpResponse, HttpServer};
 use futures::StreamExt;
 use log::{info, warn};
 use serde::Deserialize;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::crypto::Crypto;
 use crate::{App, RecvMessage};
@@ -17,21 +18,6 @@ pub struct Server<T: App> {
     app: T,
     crypto: Crypto,
     port: u16,
-}
-
-#[derive(Debug, Deserialize)]
-struct ValidateParams {
-    msg_signature: String,
-    timestamp: u64,
-    nonce: u64,
-    echostr: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct RecvParams {
-    msg_signature: String,
-    timestamp: u64,
-    nonce: u64,
 }
 
 impl<T: App> Builder<T> {
@@ -73,6 +59,23 @@ impl<T: App> Server<T> {
         .run()
         .await
     }
+}
+
+
+
+#[derive(Debug, Deserialize)]
+struct ValidateParams {
+    msg_signature: String,
+    timestamp: u64,
+    nonce: u64,
+    echostr: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RecvParams {
+    msg_signature: String,
+    timestamp: u64,
+    nonce: u64,
 }
 
 async fn validate<T: App>(
@@ -133,8 +136,9 @@ async fn recv<T: App>(
 
 ///////////////////////////// helper functions ///////////////////////////////////////////////
 
+#[inline]
 fn current_timestamp() -> u64 {
-    todo!()
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
 }
 
 fn gen_nonce() -> u64 {
