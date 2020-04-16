@@ -8,7 +8,6 @@ use super::error::{MessageError, Result};
 
 #[derive(Debug, Clone)]
 pub struct RecvMessage {
-    pub msg_encrypt: String,
     pub to_user_name: String,
     pub from_user_name: String,
     pub agent_id: u64,
@@ -32,7 +31,7 @@ pub enum RecvMessageType {
 #[derive(Debug, Clone)]
 pub struct Picture {
     pub pic_url: String,
-    pub media_id: String,
+    pub media_id: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -131,12 +130,17 @@ impl RecvMessage {
             "text" => {
                 let content = try_field!("Content", inner_xml);
                 RecvMessageType::Text(content)
-            }
+            },
+            "image" => {
+                let pic_url = try_field!("PicUrl", inner_xml);
+                let media_id = try_field_parse!("MediaId", inner_xml, u64);
+                let pic = Picture {pic_url, media_id} ;
+                RecvMessageType::Picture(pic)
+            },
             ty => return Err(MessageError::InvalidMessageType(ty.to_string())), // TODO
         };
 
         Ok(RecvMessage {
-            msg_encrypt,
             to_user_name,
             agent_id,
             from_user_name,
