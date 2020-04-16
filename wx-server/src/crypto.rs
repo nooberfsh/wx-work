@@ -1,9 +1,20 @@
+use base64::DecodeError;
 use byteorder::{BigEndian, ByteOrder};
 use itertools::Itertools;
+use openssl::error::ErrorStack;
 use openssl::symm::Cipher;
 use sha1::{Digest, Sha1};
+use thiserror::Error;
 
-use crate::{Error, Result};
+#[derive(Error, Debug)]
+pub(crate) enum CryptoError {
+    #[error("base64 error: {0}")]
+    Base64(#[from] DecodeError),
+    #[error("crypto error: {0}")]
+    Openssl(#[from] ErrorStack),
+    #[error("invalid aes key, length must be 43")]
+    InvalidAesKeyLength,
+}
 
 #[derive(Debug)]
 pub(crate) struct Crypto {
@@ -18,10 +29,10 @@ pub(crate) struct Payload {
 }
 
 impl Crypto {
-    pub(crate) fn new(token: String, encoding_aes_key: String) -> Result<Crypto> {
+    pub(crate) fn new(token: String, encoding_aes_key: String) -> Result<Crypto, CryptoError> {
         let bytes = encoding_aes_key.as_bytes();
         if bytes.len() != 43 {
-            return Err(Error::InvalidAesKey);
+            return Err(CryptoError::InvalidAesKeyLength);
         }
         let mut buf = Vec::with_capacity(bytes.len());
         buf.extend_from_slice(bytes);
@@ -47,7 +58,7 @@ impl Crypto {
             .to_string()
     }
 
-    pub(crate) fn encrypt(&self, msg: Payload) -> Result<String> {
+    pub(crate) fn encrypt(&self, msg: Payload) -> Result<String, CryptoError> {
         let aes_key = &self.aes_key;
         let iv = &aes_key[0..16];
 
@@ -64,7 +75,7 @@ impl Crypto {
         Ok(base64::encode(encrypted))
     }
 
-    pub fn decrypt(&self, data: impl AsRef<[u8]>) -> Result<Payload> {
+    pub fn decrypt(&self, data: impl AsRef<[u8]>) -> Result<Payload, CryptoError> {
         let aes_key = &self.aes_key;
         let iv = &aes_key[0..16];
 

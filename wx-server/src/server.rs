@@ -1,8 +1,9 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use actix_web::{web, App as ActixApp, Error, HttpResponse, HttpServer};
 use futures::StreamExt;
 use log::{info, warn};
 use serde::Deserialize;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::crypto::Crypto;
 use crate::{App, RecvMessage};
@@ -35,7 +36,7 @@ impl<T: App> Builder<T> {
         self
     }
 
-    pub fn build(self) -> crate::Result<Server<T>> {
+    pub fn build(self) -> anyhow::Result<Server<T>> {
         let app = self.app;
         let crypto = Crypto::new(self.token, self.encoding_aes_key)?;
         let port = self.port.unwrap_or(12349);
@@ -60,8 +61,6 @@ impl<T: App> Server<T> {
         .await
     }
 }
-
-
 
 #[derive(Debug, Deserialize)]
 struct ValidateParams {
@@ -138,7 +137,10 @@ async fn recv<T: App>(
 
 #[inline]
 fn current_timestamp() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }
 
 #[inline]

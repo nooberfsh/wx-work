@@ -1,7 +1,8 @@
 use xmltree::{Element, XMLNode};
 
 use crate::crypto::{Crypto, Payload};
-use crate::Result;
+use crate::error::MessageError::EncryptFailed;
+use crate::error::Result;
 
 #[derive(Debug, Clone)]
 pub struct SendMessage {
@@ -75,7 +76,9 @@ impl SendMessage {
             data: inner.into_bytes(),
             receive_id: vec![],
         }; // TODO is empty receiver id ok?
-        let encrypt = crypto.encrypt(payload)?;
+        let encrypt = crypto
+            .encrypt(payload)
+            .map_err(|e| EncryptFailed(format!("{}", e)))?;
         let sign = crypto.sign(encrypt.clone(), timestamp, nonce);
 
         let encrypt = new_node("Encrypt", encrypt);

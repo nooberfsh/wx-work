@@ -2,7 +2,9 @@ use std::str::FromStr;
 
 use xmltree::Element;
 
-use crate::{crypto::Crypto, Error, Result};
+use crate::crypto::Crypto;
+use crate::error::MessageError::DecryptFailed;
+use crate::error::{MessageError, Result};
 
 #[derive(Debug, Clone)]
 pub struct RecvMessage {
@@ -66,7 +68,7 @@ macro_rules! try_field {
     ($name:expr, $element:expr) => {
         match fetch($name, &$element) {
             Some(d) => d.to_string(),
-            None => return Err(Error::MessageMissingField($name)),
+            None => return Err(MessageError::MissingField($name)),
         }
     };
 }
@@ -77,13 +79,13 @@ macro_rules! try_field_parse {
             Some(d) => match $ty::from_str(d) {
                 Ok(d) => d,
                 Err(_) => {
-                    return Err(Error::MessageInvalidFieldType(format!(
+                    return Err(MessageError::InvalidFieldType(format!(
                         "{} parse failed",
                         $name
                     )))
                 }
             },
-            None => return Err(Error::MessageMissingField($name)),
+            None => return Err(MessageError::MissingField($name)),
         }
     };
 }
@@ -102,7 +104,7 @@ impl RecvMessage {
         msg_signature: &str,
     ) -> Result<RecvMessage> {
         let xml = Element::parse(data.as_ref())
-            .map_err(|e| Error::MessageParseFailed(format!("{}", e)))?;
+            .map_err(|e| MessageError::ParseFailed(format!("{}", e)))?;
 
         let to_user_name = try_field!("ToUserName", xml);
         let agent_id = try_field_parse!("AgentID", xml, u64);
@@ -111,12 +113,15 @@ impl RecvMessage {
         let sign = crypto.sign(msg_encrypt.clone(), timestamp, nonce);
 
         if sign != msg_signature {
-            return Err(Error::InvalidMessage);
+            return Err(MessageError::InvalidSignature);
         }
 
-        let msg = crypto.decrypt(&msg_encrypt)?.data;
+        let msg = crypto
+            .decrypt(&msg_encrypt)
+            .map_err(|e| DecryptFailed(format!("{}", e)))?
+            .data;
         let inner_xml = Element::parse(&*msg)
-            .map_err(|e| Error::MessageParseFailed(format!("inner: {}", e)))?;
+            .map_err(|e| MessageError::ParseFailed(format!("inner: {}", e)))?;
 
         let from_user_name = try_field!("FromUserName", inner_xml);
         let create_time = try_field_parse!("CreateTime", inner_xml, u64);
@@ -127,7 +132,7 @@ impl RecvMessage {
                 let content = try_field!("Content", inner_xml);
                 RecvMessageType::Text(content)
             }
-            ty => return Err(Error::MessageInvalidMessageType(ty.to_string())), // TODO
+            ty => return Err(MessageError::InvalidMessageType(ty.to_string())), // TODO
         };
 
         Ok(RecvMessage {
