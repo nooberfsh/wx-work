@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{RecvMessage, SendMessage};
+use super::{RecvMessage, SendMessage};
 
 #[async_trait]
 pub trait App: Send + Sync + 'static {

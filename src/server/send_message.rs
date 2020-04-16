@@ -1,8 +1,8 @@
 use xmltree::{Element, XMLNode};
 
-use crate::crypto::{Crypto, Payload};
-use crate::error::MessageError::EncryptFailed;
-use crate::error::Result;
+use super::crypto::{Crypto, Payload};
+use super::error::MessageError::EncryptFailed;
+use super::error::Result;
 
 #[derive(Debug, Clone)]
 pub struct SendMessage {

@@ -5,8 +5,8 @@ use futures::StreamExt;
 use log::{info, warn};
 use serde::Deserialize;
 
-use crate::crypto::Crypto;
-use crate::{App, RecvMessage};
+use super::crypto::Crypto;
+use super::{App, RecvMessage};
 
 pub struct Builder<T: App> {
     app: T,
