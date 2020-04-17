@@ -1,7 +1,6 @@
 use std::string::ToString;
 
 use aes::Aes256;
-use base64::DecodeError;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use byteorder::{BigEndian, ByteOrder};
@@ -10,14 +9,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub(crate) enum CryptoError {
-    #[error("base64 error: {0}")]
-    Base64(#[from] DecodeError),
-    #[error("invalid aes key, length must be 43")]
-    InvalidAesKeyLength,
+    #[error("invalid aes key, reason: {0}")]
+    InvalidAesKey(&'static str),
     #[error("invalid corp id")]
     InvalidCorpId,
-    #[error("invalid decrypt data, data length: {0}")]
-    InvalidDecryptData(usize),
+    #[error("invalid decrypt data, reason: {0}")]
+    InvalidDecryptData(&'static str),
 }
 
 #[derive(Debug)]
@@ -37,12 +34,13 @@ impl Crypto {
     ) -> Result<Crypto, CryptoError> {
         let bytes = encoding_aes_key.as_ref();
         if bytes.len() != 43 {
-            return Err(CryptoError::InvalidAesKeyLength);
+            return Err(CryptoError::InvalidAesKey("length must be 43"));
         }
         let mut buf = Vec::with_capacity(bytes.len());
         buf.extend_from_slice(bytes);
         buf.push(b'=');
-        let aes_key = base64::decode(&buf)?;
+        let aes_key = base64::decode(&buf)
+            .map_err(|_| CryptoError::InvalidAesKey("invalid base64 string"))?;
         let token = token.to_string();
         let corp_id = corp_id.to_string();
         Ok(Crypto {
@@ -65,7 +63,7 @@ impl Crypto {
         hex::encode(hasher.result())
     }
 
-    pub(crate) fn encrypt(&self, msg: impl AsRef<[u8]>) -> Result<String, CryptoError> {
+    pub(crate) fn encrypt(&self, msg: impl AsRef<[u8]>) -> String {
         let aes_key = &self.aes_key;
         let iv = &aes_key[0..16];
 
@@ -79,7 +77,7 @@ impl Crypto {
 
         let cipher = Aes256Cbc::new_var(&aes_key, &iv).unwrap();
         let encrypted = cipher.encrypt_vec(&buf);
-        Ok(base64::encode(encrypted))
+        base64::encode(encrypted)
     }
 
     pub(crate) fn decrypt(&self, data: impl AsRef<[u8]>) -> Result<Vec<u8>, CryptoError> {
@@ -88,13 +86,14 @@ impl Crypto {
 
         let len = data.as_ref().len();
         if len < block_size || block_size % block_size != 0 {
-            return Err(CryptoError::InvalidDecryptData(len));
+            return Err(CryptoError::InvalidDecryptData("invalid length"));
         }
 
         let aes_key = &self.aes_key;
         let iv = &aes_key[0..block_size];
 
-        let aes_msg = base64::decode(data)?;
+        let aes_msg = base64::decode(data)
+            .map_err(|_| CryptoError::InvalidDecryptData("invalid base64 string"))?;
         let cipher = Aes256Cbc::new_var(&aes_key, &iv).unwrap();
         let decrypted = cipher.decrypt_vec(&aes_msg).unwrap();
         let msg_len = BigEndian::read_u32(&decrypted[16..20]) as usize;
@@ -166,7 +165,7 @@ mod tests {
         let corp_id = "123";
 
         let crypto = Crypto::new(token, encoding_aes_key, corp_id).unwrap();
-        let encrypted = crypto.encrypt(data).unwrap();
+        let encrypted = crypto.encrypt(data);
         let msg = crypto.decrypt(encrypted).unwrap();
         let ret_data = String::from_utf8(msg).unwrap();
 

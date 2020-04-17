@@ -6,8 +6,6 @@ pub(crate) enum MessageError {
     InvalidSignature,
     #[error("message decrypt failed, reason: {0}")]
     DecryptFailed(String),
-    #[error("message encrypt failed, reason: {0}")]
-    EncryptFailed(String),
     #[error("message parse failed, reason: {0}")]
     ParseFailed(String),
     #[error("message missing field: {0}")]
