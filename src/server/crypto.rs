@@ -11,8 +11,6 @@ use thiserror::Error;
 pub(crate) enum CryptoError {
     #[error("invalid aes key, reason: {0}")]
     InvalidAesKey(&'static str),
-    #[error("invalid corp id")]
-    InvalidCorpId,
     #[error("invalid decrypt data, reason: {0}")]
     InvalidDecryptData(&'static str),
 }
@@ -100,7 +98,7 @@ impl Crypto {
         let rcv_id_idx = 20 + msg_len;
 
         if &decrypted[rcv_id_idx..] != self.corp_id.as_bytes() {
-            return Err(CryptoError::InvalidCorpId);
+            return Err(CryptoError::InvalidDecryptData("invalid corp id"));
         }
 
         let ret = Vec::from(&decrypted[20..rcv_id_idx]);
@@ -124,6 +122,20 @@ mod tests {
         let k2 = "4Ma3YBrSBbX2aez8MJpXGBne5LSDwgGqHbhM9WPYIwC";
         let r2 = Crypto::new(token, k2, corp_id);
         assert!(r2.is_err());
+    }
+
+    #[test]
+    fn test_invalid_decrypt_data() {
+        let token = "QDG6eK";
+        let k1 = "4Ma3YBrSBbX2aez8MJpXGBne5LSDwgGqHbhM9WPYIws";
+        let corp_id = "123";
+
+        let crypto = Crypto::new(token, k1, corp_id).unwrap();
+        let r1 = crypto.decrypt("123");
+        assert!(r1.is_err());
+
+        let r2 = crypto.decrypt("0123456789abcdef");
+        assert!(r1.is_err());
     }
 
     #[test]
@@ -151,7 +163,6 @@ mod tests {
         let corp_id = "123";
 
         let crypto = Crypto::new(token, encoding_aes_key, corp_id).unwrap();
-
         let msg = crypto.decrypt(msg_encrypt).unwrap();
         let data = String::from_utf8(msg).unwrap();
         assert_eq!(data, msg_data);
@@ -168,7 +179,6 @@ mod tests {
         let encrypted = crypto.encrypt(data);
         let msg = crypto.decrypt(encrypted).unwrap();
         let ret_data = String::from_utf8(msg).unwrap();
-
         assert_eq!(ret_data, data);
     }
 }
