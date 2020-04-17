@@ -117,8 +117,7 @@ impl RecvMessage {
 
         let msg = crypto
             .decrypt(&msg_encrypt)
-            .map_err(|e| DecryptFailed(format!("{}", e)))?
-            .data;
+            .map_err(|e| DecryptFailed(format!("{}", e)))?;
         let inner_xml = Element::parse(&*msg)
             .map_err(|e| MessageError::ParseFailed(format!("inner: {}", e)))?;
 
@@ -130,13 +129,13 @@ impl RecvMessage {
             "text" => {
                 let content = try_field!("Content", inner_xml);
                 RecvMessageType::Text(content)
-            },
+            }
             "image" => {
                 let pic_url = try_field!("PicUrl", inner_xml);
                 let media_id = try_field_parse!("MediaId", inner_xml, u64);
-                let pic = Picture {pic_url, media_id} ;
+                let pic = Picture { pic_url, media_id };
                 RecvMessageType::Picture(pic)
-            },
+            }
             ty => return Err(MessageError::InvalidMessageType(ty.to_string())), // TODO
         };
 

@@ -12,6 +12,7 @@ pub struct Builder<T: App> {
     app: T,
     token: String,
     encoding_aes_key: String,
+    corp_id: String,
     port: Option<u16>, // optional, default is 12349
 }
 
@@ -22,11 +23,12 @@ pub struct Server<T: App> {
 }
 
 impl<T: App> Builder<T> {
-    pub fn new(app: T, token: String, encoding_aes_key: String) -> Self {
+    pub fn new(app: T, token: String, encoding_aes_key: String, corp_id: String) -> Self {
         Builder {
             app,
             token,
             encoding_aes_key,
+            corp_id,
             port: None,
         }
     }
@@ -38,7 +40,7 @@ impl<T: App> Builder<T> {
 
     pub fn build(self) -> anyhow::Result<Server<T>> {
         let app = self.app;
-        let crypto = Crypto::new(self.token, self.encoding_aes_key)?;
+        let crypto = Crypto::new(self.token, self.encoding_aes_key, self.corp_id)?;
         let port = self.port.unwrap_or(12349);
         let s = Server { app, crypto, port };
         Ok(s)
@@ -84,7 +86,7 @@ async fn validate<T: App>(
     info!("validate request: params: {:?}", info);
 
     let crypto = &server.crypto;
-    let ret = match crypto.decrypt(&info.echostr) {
+    let data = match crypto.decrypt(&info.echostr) {
         Ok(d) => d,
         Err(e) => {
             warn!("decrypt validate message failed, reason: {}", e);
@@ -92,7 +94,7 @@ async fn validate<T: App>(
         }
     };
 
-    HttpResponse::Ok().body(ret.data)
+    HttpResponse::Ok().body(data)
 }
 
 async fn recv<T: App>(

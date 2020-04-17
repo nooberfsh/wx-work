@@ -1,6 +1,6 @@
 use xmltree::{Element, XMLNode};
 
-use super::crypto::{Crypto, Payload};
+use super::crypto::Crypto;
 use super::error::MessageError::EncryptFailed;
 use super::error::Result;
 
@@ -72,12 +72,8 @@ impl SendMessage {
         };
 
         let inner = serialize_xml(xml);
-        let payload = Payload {
-            data: inner.into_bytes(),
-            receive_id: vec![],
-        }; // TODO is empty receiver id ok?
         let encrypt = crypto
-            .encrypt(payload)
+            .encrypt(inner.into_bytes())
             .map_err(|e| EncryptFailed(format!("{}", e)))?;
         let sign = crypto.sign(encrypt.clone(), timestamp, nonce);
 
