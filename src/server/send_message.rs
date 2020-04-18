@@ -54,6 +54,15 @@ impl SendMessage {
         }
     }
 
+    pub fn new_voice(media_id: String, to_user_name: String, from_user_name: String) -> SendMessage {
+        let msg_ty = SendMessageType::Voice(media_id);
+        SendMessage {
+            to_user_name,
+            from_user_name,
+            msg_ty,
+        }
+    }
+
     pub(crate) fn serialize(self, timestamp: u64, nonce: u64, crypto: &Crypto) -> Result<String> {
         let SendMessage {
             to_user_name,
@@ -90,6 +99,23 @@ impl SendMessage {
                     msg_type,
                     pic_node,
                 ])
+            },
+            SendMessageType::Voice(media_id) => {
+                let msg_type = new_node("MsgType", "voice".to_string());
+                let voice = new_node("MediaId", media_id);
+                let voice_node = XMLNode::Element(new_xml("Voice", vec![voice]));
+
+                let ret = new_xml("xml", vec![
+                    to_user_name,
+                    from_user_name,
+                    create_time,
+                    msg_type,
+                    voice_node,
+                ]);
+
+                println!("{:?}", ret);
+                ret
+
             },
             _ => todo!(), // TODO
         };

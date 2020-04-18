@@ -136,6 +136,12 @@ impl RecvMessage {
                 let pic = Picture { pic_url, media_id };
                 RecvMessageType::Picture(pic)
             }
+            "voice" => {
+                let format = try_field!("Format", inner_xml);
+                let media_id = try_field!("MediaId", inner_xml);
+                let voice = Voice{format, media_id};
+                RecvMessageType::Voice(voice)
+            }
             ty => return Err(MessageError::InvalidMessageType(ty.to_string())), // TODO
         };
 
