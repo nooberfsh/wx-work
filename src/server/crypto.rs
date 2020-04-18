@@ -71,7 +71,7 @@ impl Crypto {
         buf.extend_from_slice(&[0; 20]);
         BigEndian::write_u32(&mut buf[16..], data_len as u32);
         buf.extend_from_slice(msg.as_ref());
-        buf.extend_from_slice(self.corp_id.as_bytes());
+        //buf.extend_from_slice(self.corp_id.as_bytes()); // TODO:
 
         let cipher = Aes256Cbc::new_var(&aes_key, &iv).unwrap();
         let encrypted = cipher.encrypt_vec(&buf);
