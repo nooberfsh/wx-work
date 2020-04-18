@@ -6,6 +6,7 @@ use std::thread::{self, JoinHandle};
 use log::{error, info};
 use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use tokio::runtime::{Builder, Runtime};
 use tokio::time::{delay_for, Duration};
 
@@ -138,6 +139,13 @@ pub struct UploadFileResponse {
     created_at: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UploadImageResponse {
+    errcode: u64,
+    errmsg: String,
+    url: String,
+}
+
 /// 素材管理
 impl Client {
     pub async fn upload_file(&self, ty: FileType, path: &str) -> Result<UploadFileResponse> {
@@ -158,16 +166,40 @@ impl Client {
         let mut buf = vec![];
         f.read_to_end(&mut buf)?;
 
-        let part = Part::bytes(buf).file_name(file_name);
+        self.upload_media(&url, buf, file_name).await
+    }
+
+    pub async fn upload_image(&self, path: &str) -> Result<UploadImageResponse> {
+        let url = format!(
+            "{}/cgi-bin/media/uploadimg?access_token={}",
+            WX_URL,
+            self.access_token.read().unwrap(),
+        );
+
+        let mut f = File::open(path)?;
+        let file_name = Path::new(path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string(); // TODO need handle unwrap
+        let mut buf = vec![];
+        f.read_to_end(&mut buf)?;
+
+        self.upload_media(&url, buf, file_name).await
+    }
+
+    async fn upload_media<T: DeserializeOwned>(&self, url: &str, data: Vec<u8>, file_name: String) -> Result<T> {
+        let part = Part::bytes(data).file_name(file_name);
         let form = Form::new().part("media", part);
 
         let ret = self
             .http_client
-            .post(&url)
+            .post(url)
             .multipart(form)
             .send()
             .await?
-            .json::<UploadFileResponse>()
+            .json()
             .await?;
 
         Ok(ret)
