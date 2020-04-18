@@ -54,7 +54,11 @@ impl SendMessage {
         }
     }
 
-    pub fn new_voice(media_id: String, to_user_name: String, from_user_name: String) -> SendMessage {
+    pub fn new_voice(
+        media_id: String,
+        to_user_name: String,
+        from_user_name: String,
+    ) -> SendMessage {
         let msg_ty = SendMessageType::Voice(media_id);
         SendMessage {
             to_user_name,
@@ -63,7 +67,11 @@ impl SendMessage {
         }
     }
 
-    pub fn new_video(video: SendVideo, to_user_name: String, from_user_name: String) -> SendMessage {
+    pub fn new_video(
+        video: SendVideo,
+        to_user_name: String,
+        from_user_name: String,
+    ) -> SendMessage {
         let msg_ty = SendMessageType::Video(video);
         SendMessage {
             to_user_name,
@@ -72,11 +80,19 @@ impl SendMessage {
         }
     }
 
-    pub fn new_pic_text(pt: PictureText, to_user_name: String, from_user_name: String) -> SendMessage {
+    pub fn new_pic_text(
+        pt: PictureText,
+        to_user_name: String,
+        from_user_name: String,
+    ) -> SendMessage {
         Self::new_pic_texts(vec![pt], to_user_name, from_user_name)
     }
 
-    pub fn new_pic_texts(pts: Vec<PictureText>, to_user_name: String, from_user_name: String) -> SendMessage {
+    pub fn new_pic_texts(
+        pts: Vec<PictureText>,
+        to_user_name: String,
+        from_user_name: String,
+    ) -> SendMessage {
         let msg_ty = SendMessageType::PictureText(pts);
         SendMessage {
             to_user_name,
@@ -101,40 +117,43 @@ impl SendMessage {
                 let msg_type = new_node("MsgType", "text".to_string());
                 let content = new_node("Content", content);
 
-                new_xml("xml", vec![
-                    to_user_name,
-                    from_user_name,
-                    create_time,
-                    msg_type,
-                    content,
-                ])
-            },
+                new_xml(
+                    "xml",
+                    vec![to_user_name, from_user_name, create_time, msg_type, content],
+                )
+            }
             SendMessageType::Picture(media_id) => {
                 let msg_type = new_node("MsgType", "image".to_string());
                 let pic = new_node("MediaId", media_id);
                 let pic_node = XMLNode::Element(new_xml("Image", vec![pic]));
 
-                new_xml("xml", vec![
-                    to_user_name,
-                    from_user_name,
-                    create_time,
-                    msg_type,
-                    pic_node,
-                ])
-            },
+                new_xml(
+                    "xml",
+                    vec![
+                        to_user_name,
+                        from_user_name,
+                        create_time,
+                        msg_type,
+                        pic_node,
+                    ],
+                )
+            }
             SendMessageType::Voice(media_id) => {
                 let msg_type = new_node("MsgType", "voice".to_string());
                 let voice = new_node("MediaId", media_id);
                 let voice_node = XMLNode::Element(new_xml("Voice", vec![voice]));
 
-                new_xml("xml", vec![
-                    to_user_name,
-                    from_user_name,
-                    create_time,
-                    msg_type,
-                    voice_node,
-                ])
-            },
+                new_xml(
+                    "xml",
+                    vec![
+                        to_user_name,
+                        from_user_name,
+                        create_time,
+                        msg_type,
+                        voice_node,
+                    ],
+                )
+            }
             SendMessageType::Video(v) => {
                 let msg_type = new_node("MsgType", "video".to_string());
                 let media_id = new_node("MediaId", v.media_id);
@@ -142,37 +161,46 @@ impl SendMessage {
                 let desc = new_node("Description", v.description);
                 let video_node = XMLNode::Element(new_xml("Video", vec![media_id, title, desc]));
 
-                new_xml("xml", vec![
-                    to_user_name,
-                    from_user_name,
-                    create_time,
-                    msg_type,
-                    video_node,
-                ])
-            },
+                new_xml(
+                    "xml",
+                    vec![
+                        to_user_name,
+                        from_user_name,
+                        create_time,
+                        msg_type,
+                        video_node,
+                    ],
+                )
+            }
             SendMessageType::PictureText(pts) => {
                 let msg_type = new_node("MsgType", "news".to_string());
                 let count = new_node("ArticleCount", pts.len().to_string());
 
-                let items = pts.into_iter().map(|pt| {
-                    let title = new_node("Title", pt.title);
-                    let desc = new_node("Description", pt.description);
-                    let pic_url = new_node("PicUrl", pt.pic_url);
-                    let url = new_node("Url", pt.url);
-                    XMLNode::Element(new_xml("item", vec![title, desc, pic_url, url]))
-                }).collect();
+                let items = pts
+                    .into_iter()
+                    .map(|pt| {
+                        let title = new_node("Title", pt.title);
+                        let desc = new_node("Description", pt.description);
+                        let pic_url = new_node("PicUrl", pt.pic_url);
+                        let url = new_node("Url", pt.url);
+                        XMLNode::Element(new_xml("item", vec![title, desc, pic_url, url]))
+                    })
+                    .collect();
 
                 let articles = XMLNode::Element(new_xml("Articles", items));
 
-                new_xml("xml", vec![
-                    to_user_name,
-                    from_user_name,
-                    create_time,
-                    msg_type,
-                    count,
-                    articles,
-                ])
-            },
+                new_xml(
+                    "xml",
+                    vec![
+                        to_user_name,
+                        from_user_name,
+                        create_time,
+                        msg_type,
+                        count,
+                        articles,
+                    ],
+                )
+            }
         };
 
         let inner = serialize_xml(xml);

@@ -1,17 +1,23 @@
+use std::fs::File;
+use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 
 use log::{error, info};
+use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
 use tokio::runtime::{Builder, Runtime};
 use tokio::time::{delay_for, Duration};
 
 use crate::{Error, Result};
+use std::io::Read;
+
+static WX_URL: &str = "https://qyapi.weixin.qq.com";
 
 pub struct Client {
     access_token: Arc<RwLock<String>>,
     http_client: Arc<reqwest::Client>,
-    refresh_token_thread: JoinHandle<()>, // TODO: should join handle when drop ?
+    _refresh_token_thread: JoinHandle<()>, // TODO: should join handle when drop ?
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,10 +74,10 @@ fn start_refresh_token_thread(
 }
 
 impl Client {
-    pub fn new(corp_id: String, corp_secret: String, get_token_url: String) -> Result<Self> {
+    pub fn new(corp_id: &str, corp_secret: &str) -> Result<Self> {
         let url = format!(
-            "{}?corpid={}&corpsecret={}",
-            get_token_url, corp_id, corp_secret
+            "{}/cgi-bin/gettoken?corpid={}&corpsecret={}",
+            WX_URL, corp_id, corp_secret
         );
 
         let mut runtime = Builder::new()
@@ -85,7 +91,7 @@ impl Client {
 
         let access_token = Arc::new(RwLock::new(resp.access_token));
 
-        let refresh_token_thread = start_refresh_token_thread(
+        let _refresh_token_thread = start_refresh_token_thread(
             runtime,
             http_client.clone(),
             url,
@@ -96,8 +102,73 @@ impl Client {
         let ret = Client {
             access_token,
             http_client,
-            refresh_token_thread,
+            _refresh_token_thread,
         };
+
+        Ok(ret)
+    }
+}
+
+pub enum FileType {
+    Image,
+    Voice,
+    Video,
+    File,
+}
+
+impl FileType {
+    fn type_desc(&self) -> &'static str {
+        use FileType::*;
+        match self {
+            Image => "image",
+            Voice => "voice",
+            Video => "video",
+            File => "file",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UploadFileResponse {
+    errcode: u64,
+    errmsg: String,
+    #[serde (rename = "type")]
+    ty: String,
+    media_id: String,
+    created_at: String,
+}
+
+/// 素材管理
+impl Client {
+    pub async fn upload_file(&self, ty: FileType, path: &str) -> Result<UploadFileResponse> {
+        let url = format!(
+            "{}/cgi-bin/media/upload?access_token={}&type={}",
+            WX_URL,
+            self.access_token.read().unwrap(),
+            ty.type_desc()
+        );
+
+        let mut f = File::open(path)?;
+        let file_name = Path::new(path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string(); // TODO need handle unwrap
+        let mut buf = vec![];
+        f.read_to_end(&mut buf)?;
+
+        let part = Part::bytes(buf).file_name(file_name);
+        let form = Form::new().part("media", part);
+
+        let ret = self
+            .http_client
+            .post(&url)
+            .multipart(form)
+            .send()
+            .await?
+            .json::<UploadFileResponse>()
+            .await?;
 
         Ok(ret)
     }
