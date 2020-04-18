@@ -31,7 +31,7 @@ pub enum RecvMessageType {
 #[derive(Debug, Clone)]
 pub struct Picture {
     pub pic_url: String,
-    pub media_id: u64,
+    pub media_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -132,7 +132,7 @@ impl RecvMessage {
             }
             "image" => {
                 let pic_url = try_field!("PicUrl", inner_xml);
-                let media_id = try_field_parse!("MediaId", inner_xml, u64);
+                let media_id = try_field!("MediaId", inner_xml);
                 let pic = Picture { pic_url, media_id };
                 RecvMessageType::Picture(pic)
             }
