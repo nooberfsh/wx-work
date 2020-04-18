@@ -63,6 +63,15 @@ impl SendMessage {
         }
     }
 
+    pub fn new_video(video: SendVideo, to_user_name: String, from_user_name: String) -> SendMessage {
+        let msg_ty = SendMessageType::Video(video);
+        SendMessage {
+            to_user_name,
+            from_user_name,
+            msg_ty,
+        }
+    }
+
     pub(crate) fn serialize(self, timestamp: u64, nonce: u64, crypto: &Crypto) -> Result<String> {
         let SendMessage {
             to_user_name,
@@ -105,17 +114,28 @@ impl SendMessage {
                 let voice = new_node("MediaId", media_id);
                 let voice_node = XMLNode::Element(new_xml("Voice", vec![voice]));
 
-                let ret = new_xml("xml", vec![
+                new_xml("xml", vec![
                     to_user_name,
                     from_user_name,
                     create_time,
                     msg_type,
                     voice_node,
-                ]);
+                ])
+            },
+            SendMessageType::Video(v) => {
+                let msg_type = new_node("MsgType", "video".to_string());
+                let media_id = new_node("MediaId", v.media_id);
+                let title = new_node("Title", v.title);
+                let desc = new_node("Description", v.description);
+                let video_node = XMLNode::Element(new_xml("Video", vec![media_id, title, desc]));
 
-                println!("{:?}", ret);
-                ret
-
+                new_xml("xml", vec![
+                    to_user_name,
+                    from_user_name,
+                    create_time,
+                    msg_type,
+                    video_node,
+                ])
             },
             _ => todo!(), // TODO
         };

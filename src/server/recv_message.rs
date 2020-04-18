@@ -142,6 +142,12 @@ impl RecvMessage {
                 let voice = Voice{format, media_id};
                 RecvMessageType::Voice(voice)
             }
+            "video" => {
+                let media_id = try_field!("MediaId", inner_xml);
+                let thumb_media_id = try_field!("ThumbMediaId", inner_xml);
+                let video = RecvVideo{media_id, thumb_media_id};
+                RecvMessageType::Video(video)
+            }
             ty => return Err(MessageError::InvalidMessageType(ty.to_string())), // TODO
         };
 
