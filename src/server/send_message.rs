@@ -72,6 +72,19 @@ impl SendMessage {
         }
     }
 
+    pub fn new_pic_text(pt: PictureText, to_user_name: String, from_user_name: String) -> SendMessage {
+        Self::new_pic_texts(vec![pt], to_user_name, from_user_name)
+    }
+
+    pub fn new_pic_texts(pts: Vec<PictureText>, to_user_name: String, from_user_name: String) -> SendMessage {
+        let msg_ty = SendMessageType::PictureText(pts);
+        SendMessage {
+            to_user_name,
+            from_user_name,
+            msg_ty,
+        }
+    }
+
     pub(crate) fn serialize(self, timestamp: u64, nonce: u64, crypto: &Crypto) -> Result<String> {
         let SendMessage {
             to_user_name,
@@ -137,7 +150,29 @@ impl SendMessage {
                     video_node,
                 ])
             },
-            _ => todo!(), // TODO
+            SendMessageType::PictureText(pts) => {
+                let msg_type = new_node("MsgType", "news".to_string());
+                let count = new_node("ArticleCount", pts.len().to_string());
+
+                let items = pts.into_iter().map(|pt| {
+                    let title = new_node("Title", pt.title);
+                    let desc = new_node("Description", pt.description);
+                    let pic_url = new_node("PicUrl", pt.pic_url);
+                    let url = new_node("Url", pt.url);
+                    XMLNode::Element(new_xml("item", vec![title, desc, pic_url, url]))
+                }).collect();
+
+                let articles = XMLNode::Element(new_xml("Articles", items));
+
+                new_xml("xml", vec![
+                    to_user_name,
+                    from_user_name,
+                    create_time,
+                    msg_type,
+                    count,
+                    articles,
+                ])
+            },
         };
 
         let inner = serialize_xml(xml);

@@ -135,7 +135,7 @@ mod tests {
         assert!(r1.is_err());
 
         let r2 = crypto.decrypt("0123456789abcdef");
-        assert!(r1.is_err());
+        assert!(r2.is_err());
     }
 
     #[test]
