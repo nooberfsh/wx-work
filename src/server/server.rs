@@ -23,12 +23,17 @@ pub struct Server<T: App> {
 }
 
 impl<T: App> Builder<T> {
-    pub fn new(app: T, token: String, encoding_aes_key: String, corp_id: String) -> Self {
+    pub fn new(
+        app: T,
+        token: impl ToString,
+        encoding_aes_key: impl ToString,
+        corp_id: impl ToString,
+    ) -> Self {
         Builder {
             app,
-            token,
-            encoding_aes_key,
-            corp_id,
+            token: token.to_string(),
+            encoding_aes_key: encoding_aes_key.to_string(),
+            corp_id: corp_id.to_string(),
             port: None,
         }
     }
