@@ -43,18 +43,18 @@ pub struct Message {
 }
 
 #[derive(Debug)]
-pub enum MessageType {
+enum MessageType {
     Text(Text),
     File(File),
 }
 
 #[derive(Debug, Serialize)]
-pub struct Text {
+struct Text {
     content: String,
 }
 
 #[derive(Debug, Serialize)]
-pub struct File {
+struct File {
     media_id: String,
 }
 
