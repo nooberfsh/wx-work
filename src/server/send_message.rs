@@ -1,6 +1,6 @@
 use xmltree::{Element, XMLNode};
 
-use super::crypto::Crypto;
+use super::crypto::{Crypto, Payload};
 use super::error::Result;
 
 #[derive(Debug, Clone)]
@@ -108,51 +108,34 @@ impl SendMessage {
             msg_ty,
         } = self;
 
-        let to_user_name = new_node("ToUserName", to_user_name);
-        let from_user_name = new_node("FromUserName", from_user_name);
-        let create_time = new_node("CreateTime", format!("{}", timestamp));
+        let mut receiver = to_user_name.clone().into_bytes();
 
-        let xml = match msg_ty {
+        let to = new_node("ToUserName", to_user_name);
+        let from = new_node("FromUserName", from_user_name);
+        let create_time = new_node("CreateTime", format!("{}", timestamp));
+        let mut nodes = vec![to, from, create_time];
+
+        match msg_ty {
             SendMessageType::Text(content) => {
                 let msg_type = new_node("MsgType", "text".to_string());
                 let content = new_node("Content", content);
-
-                new_xml(
-                    "xml",
-                    vec![to_user_name, from_user_name, create_time, msg_type, content],
-                )
+                nodes.push(msg_type);
+                nodes.push(content);
             }
             SendMessageType::Picture(media_id) => {
                 let msg_type = new_node("MsgType", "image".to_string());
                 let pic = new_node("MediaId", media_id);
                 let pic_node = XMLNode::Element(new_xml("Image", vec![pic]));
-
-                new_xml(
-                    "xml",
-                    vec![
-                        to_user_name,
-                        from_user_name,
-                        create_time,
-                        msg_type,
-                        pic_node,
-                    ],
-                )
+                nodes.push(msg_type);
+                nodes.push(pic_node);
+                receiver.clear() // TODO: 遗失微信 bug
             }
             SendMessageType::Voice(media_id) => {
                 let msg_type = new_node("MsgType", "voice".to_string());
                 let voice = new_node("MediaId", media_id);
                 let voice_node = XMLNode::Element(new_xml("Voice", vec![voice]));
-
-                new_xml(
-                    "xml",
-                    vec![
-                        to_user_name,
-                        from_user_name,
-                        create_time,
-                        msg_type,
-                        voice_node,
-                    ],
-                )
+                nodes.push(msg_type);
+                nodes.push(voice_node);
             }
             SendMessageType::Video(v) => {
                 let msg_type = new_node("MsgType", "video".to_string());
@@ -160,17 +143,8 @@ impl SendMessage {
                 let title = new_node("Title", v.title);
                 let desc = new_node("Description", v.description);
                 let video_node = XMLNode::Element(new_xml("Video", vec![media_id, title, desc]));
-
-                new_xml(
-                    "xml",
-                    vec![
-                        to_user_name,
-                        from_user_name,
-                        create_time,
-                        msg_type,
-                        video_node,
-                    ],
-                )
+                nodes.push(msg_type);
+                nodes.push(video_node);
             }
             SendMessageType::PictureText(pts) => {
                 let msg_type = new_node("MsgType", "news".to_string());
@@ -186,25 +160,20 @@ impl SendMessage {
                         XMLNode::Element(new_xml("item", vec![title, desc, pic_url, url]))
                     })
                     .collect();
-
                 let articles = XMLNode::Element(new_xml("Articles", items));
-
-                new_xml(
-                    "xml",
-                    vec![
-                        to_user_name,
-                        from_user_name,
-                        create_time,
-                        msg_type,
-                        count,
-                        articles,
-                    ],
-                )
+                nodes.push(msg_type);
+                nodes.push(count);
+                nodes.push(articles);
+                receiver.clear();
             }
         };
-
+        let xml = new_xml("xml", nodes);
         let inner = serialize_xml(xml);
-        let encrypt = crypto.encrypt(inner.into_bytes());
+        let payload = Payload {
+            data: inner.into_bytes(),
+            receiver_id: receiver,
+        };
+        let encrypt = crypto.encrypt(&payload);
         let sign = crypto.sign(encrypt.clone(), timestamp, nonce);
 
         let encrypt = new_node("Encrypt", encrypt);

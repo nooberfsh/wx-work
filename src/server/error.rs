@@ -4,6 +4,8 @@ use thiserror::Error;
 pub(crate) enum MessageError {
     #[error("message invalid signature")]
     InvalidSignature,
+    #[error("message invalid receiver")]
+    InvalidReceiver,
     #[error("message decrypt failed, reason: {0}")]
     DecryptFailed(String),
     #[error("message parse failed, reason: {0}")]

@@ -3,7 +3,6 @@ use std::str::FromStr;
 use xmltree::Element;
 
 use super::crypto::Crypto;
-use super::error::MessageError::DecryptFailed;
 use super::error::{MessageError, Result};
 
 #[derive(Debug, Clone)]
@@ -115,9 +114,15 @@ impl RecvMessage {
             return Err(MessageError::InvalidSignature);
         }
 
-        let msg = crypto
+        let payload = crypto
             .decrypt(&msg_encrypt)
-            .map_err(|e| DecryptFailed(format!("{}", e)))?;
+            .map_err(|e| MessageError::DecryptFailed(format!("{}", e)))?;
+        let msg = payload.data;
+        let receiver_id = payload.receiver_id;
+        if &*receiver_id != to_user_name.as_bytes() {
+            return Err(MessageError::InvalidReceiver);
+        }
+
         let inner_xml = Element::parse(&*msg)
             .map_err(|e| MessageError::ParseFailed(format!("inner: {}", e)))?;
 
