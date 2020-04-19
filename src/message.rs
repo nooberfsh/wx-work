@@ -1,14 +1,15 @@
 use itertools::Itertools;
 use serde::ser::{SerializeMap, Serializer};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+#[derive(Debug, Deserialize)]
 pub struct MessageResponse {
-    pub errcode: u64,
-    pub errmsg: String,
-    pub invaliduser: String,
-    pub invalidparty: String,
-    pub invalidtag: String,
+    errcode: u64,
+    errmsg: String,
+    pub invaliduser: Option<String>,
+    pub invalidparty: Option<String>,
+    pub invalidtag: Option<String>,
 }
 
 #[derive(Error, Debug)]
@@ -118,7 +119,7 @@ impl MessageBuilder {
     }
 
     pub fn build(self) -> Result<Message, MessageBuildError> {
-        if self.to_users.is_empty() || self.to_parties.is_empty() || self.to_tags.is_empty() {
+        if self.to_users.is_empty() && self.to_parties.is_empty() && self.to_tags.is_empty() {
             return Err(MessageBuildError::EmptyReceiver);
         }
 

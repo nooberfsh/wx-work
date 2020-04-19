@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use tokio::runtime::{Builder, Runtime};
 use tokio::time::{delay_for, Duration};
 
+use crate::media::*;
+use crate::message::*;
 use crate::{Error, Result};
 use std::io::Read;
 
@@ -110,42 +112,6 @@ impl Client {
     }
 }
 
-pub enum FileType {
-    Image,
-    Voice,
-    Video,
-    File,
-}
-
-impl FileType {
-    fn type_desc(&self) -> &'static str {
-        use FileType::*;
-        match self {
-            Image => "image",
-            Voice => "voice",
-            Video => "video",
-            File => "file",
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UploadFileResponse {
-    errcode: u64,
-    errmsg: String,
-    #[serde(rename = "type")]
-    ty: String,
-    media_id: String,
-    created_at: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UploadImageResponse {
-    errcode: u64,
-    errmsg: String,
-    url: String,
-}
-
 /// 素材管理
 impl Client {
     pub async fn upload_file(&self, ty: FileType, path: &str) -> Result<UploadFileResponse> {
@@ -202,6 +168,28 @@ impl Client {
             .http_client
             .post(url)
             .multipart(form)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(ret)
+    }
+}
+
+/// 发送应用消息
+impl Client {
+    pub async fn send_msg(&self, msg: &Message) -> Result<MessageResponse> {
+        let url = format!(
+            "{}/cgi-bin/message/send?access_token={}",
+            WX_URL,
+            self.access_token.read().unwrap(),
+        );
+
+        let ret = self
+            .http_client
+            .post(&url)
+            .json(&msg)
             .send()
             .await?
             .json()
