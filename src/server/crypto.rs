@@ -80,18 +80,16 @@ impl Crypto {
         // TODO: get this from cipher
         let block_size = 16;
 
-        let len = data.as_ref().len();
-        if len < block_size || block_size % block_size != 0 {
-            return Err(CryptoError::InvalidDecryptData("invalid length"));
-        }
+        let aes_msg = base64::decode(data)
+            .map_err(|_| CryptoError::InvalidDecryptData("invalid base64 string"))?;
 
         let aes_key = &self.aes_key;
         let iv = &aes_key[0..block_size];
 
-        let aes_msg = base64::decode(data)
-            .map_err(|_| CryptoError::InvalidDecryptData("invalid base64 string"))?;
         let cipher = Aes256Cbc::new_var(&aes_key, &iv).unwrap();
-        let decrypted = cipher.decrypt_vec(&aes_msg).unwrap();
+        let decrypted = cipher
+            .decrypt_vec(&aes_msg)
+            .map_err(|_| CryptoError::InvalidDecryptData("invalid length"))?;
         let msg_len = BigEndian::read_u32(&decrypted[16..20]) as usize;
         let rcv_id_idx = 20 + msg_len;
         let data = Vec::from(&decrypted[20..rcv_id_idx]);
