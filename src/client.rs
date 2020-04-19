@@ -5,8 +5,8 @@ use std::thread::{self, JoinHandle};
 
 use log::{error, info};
 use reqwest::multipart::{Form, Part};
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use tokio::runtime::{Builder, Runtime};
 use tokio::time::{delay_for, Duration};
 
@@ -133,7 +133,7 @@ impl FileType {
 pub struct UploadFileResponse {
     errcode: u64,
     errmsg: String,
-    #[serde (rename = "type")]
+    #[serde(rename = "type")]
     ty: String,
     media_id: String,
     created_at: String,
@@ -189,7 +189,12 @@ impl Client {
         self.upload_media(&url, buf, file_name).await
     }
 
-    async fn upload_media<T: DeserializeOwned>(&self, url: &str, data: Vec<u8>, file_name: String) -> Result<T> {
+    async fn upload_media<T: DeserializeOwned>(
+        &self,
+        url: &str,
+        data: Vec<u8>,
+        file_name: String,
+    ) -> Result<T> {
         let part = Part::bytes(data).file_name(file_name);
         let form = Form::new().part("media", part);
 
