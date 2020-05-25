@@ -41,3 +41,7 @@ fn main() {
     server.run().unwrap();
 }
 ```
+
+## License
+
+MIT
