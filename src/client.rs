@@ -1,5 +1,7 @@
 use std::fs::File;
+use std::io::Read;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
@@ -13,14 +15,14 @@ use serde::{Deserialize, Serialize};
 use crate::media::*;
 use crate::message::*;
 use crate::{Error, Result};
-use std::io::Read;
 
 static WX_URL: &str = "https://qyapi.weixin.qq.com";
 
 pub struct Client {
     access_token: Arc<RwLock<String>>,
     http_client: reqwest::Client,
-    _refresh_token_thread: JoinHandle<()>, // TODO: should join handle when drop ?
+    refresh_token_thread: Option<JoinHandle<()>>,
+    is_exit: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,6 +47,7 @@ fn start_refresh_token_thread(
     url: String,
     access_token: Arc<RwLock<String>>,
     sender: Sender<Result<()>>,
+    is_exit: Arc<AtomicBool>,
 ) -> JoinHandle<()> {
     thread::Builder::new()
         .name("wx work client".to_string())
@@ -71,7 +74,11 @@ fn start_refresh_token_thread(
                 //let delay_time = expires_in / 2;
                 let delay_time = expires_in / 2;
 
-                thread::sleep(Duration::from_secs(delay_time));
+                thread::park_timeout(Duration::from_secs(delay_time));
+                if is_exit.load(Ordering::Acquire) {
+                    info!("detect exit signal, exit thread");
+                    break;
+                }
 
                 match get_access_token(&client, &url) {
                     Ok(d) => {
@@ -98,8 +105,14 @@ impl Client {
         let (tx, rx) = mpsc::channel();
 
         let access_token = Arc::new(RwLock::new("".to_string()));
+        let is_exit = Arc::new(AtomicBool::new(false));
 
-        let _refresh_token_thread = start_refresh_token_thread(url, access_token.clone(), tx);
+        let refresh_token_thread = Some(start_refresh_token_thread(
+            url,
+            access_token.clone(),
+            tx,
+            is_exit.clone(),
+        ));
 
         rx.recv().unwrap()?;
 
@@ -108,7 +121,8 @@ impl Client {
         let ret = Client {
             access_token,
             http_client,
-            _refresh_token_thread,
+            refresh_token_thread,
+            is_exit,
         };
 
         Ok(ret)
@@ -215,3 +229,35 @@ impl Client {
         Ok(ret)
     }
 }
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.is_exit.store(true, Ordering::Release);
+        let handle = self.refresh_token_thread.take().unwrap();
+        handle.thread().unpark();
+        handle
+            .join()
+            .expect("can not join the refresh token thread");
+        info!("join refresh token thread success");
+    }
+}
+
+// for mannual test
+//#[cfg(test)]
+//mod tests {
+//    use super::*;
+//
+//    use dotenv::dotenv;
+//    use std::env::var;
+//
+//    #[test]
+//    fn test_drop() {
+//        dotenv().ok();
+//        env_logger::init();
+//
+//        let corp_id = var("CORP_ID").unwrap();
+//        let corp_secret = var("CORP_SECRET").unwrap();
+//        let client = Client::new(&corp_id, &corp_secret).unwrap();
+//        drop(client);
+//    }
+//}
