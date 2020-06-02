@@ -24,7 +24,7 @@ pub struct UploadFileResponse {
     errcode: u64,
     errmsg: String,
     #[serde(rename = "type")]
-    pub ty: String,
+    pub ty: Option<String>,
     pub media_id: String,
     pub created_at: String,
 }
