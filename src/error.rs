@@ -9,7 +9,7 @@ pub enum Error {
     #[error("get access token failed, code:{0}, error message: {1}")]
     GetAccessTokenFailed(u64, String),
     #[error("upload file failed, code:{0}, error message: {1}")]
-    UploadFileFailed(u64, String),
+    UploadMediaFailed(u64, String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

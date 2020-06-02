@@ -135,7 +135,14 @@ impl Client {
         let mut buf = vec![];
         f.read_to_end(&mut buf)?;
 
-        self.upload_media(&url, buf, file_name).await
+        let ret = self
+            .upload_media::<UploadFileResponse>(&url, buf, file_name)
+            .await?;
+        if ret.errcode != 0 {
+            Err(Error::UploadMediaFailed(ret.errcode, ret.errmsg))
+        } else {
+            Ok(ret)
+        }
     }
 
     pub async fn upload_image(&self, path: &str) -> Result<UploadImageResponse> {
@@ -155,7 +162,14 @@ impl Client {
         let mut buf = vec![];
         f.read_to_end(&mut buf)?;
 
-        self.upload_media(&url, buf, file_name).await
+        let ret = self
+            .upload_media::<UploadImageResponse>(&url, buf, file_name)
+            .await?;
+        if ret.errcode != 0 {
+            Err(Error::UploadMediaFailed(ret.errcode, ret.errmsg))
+        } else {
+            Ok(ret)
+        }
     }
 
     async fn upload_media<T: DeserializeOwned>(

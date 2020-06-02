@@ -21,8 +21,8 @@ impl FileType {
 
 #[derive(Debug, Deserialize)]
 pub struct UploadFileResponse {
-    errcode: u64,
-    errmsg: String,
+    pub(crate) errcode: u64,
+    pub(crate) errmsg: String,
     #[serde(rename = "type")]
     #[serde(default)]
     pub ty: String,
@@ -34,8 +34,8 @@ pub struct UploadFileResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct UploadImageResponse {
-    errcode: u64,
-    errmsg: String,
+    pub(crate) errcode: u64,
+    pub(crate) errmsg: String,
     #[serde(default)]
     pub url: String,
 }
