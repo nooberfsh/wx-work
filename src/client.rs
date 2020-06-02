@@ -1,14 +1,14 @@
 use std::fs::File;
 use std::path::Path;
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 use log::{error, info};
 use reqwest::multipart::{Form, Part};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use tokio::runtime::{Builder, Runtime};
-use tokio::time::{delay_for, Duration};
 
 use crate::media::*;
 use crate::message::*;
@@ -19,7 +19,7 @@ static WX_URL: &str = "https://qyapi.weixin.qq.com";
 
 pub struct Client {
     access_token: Arc<RwLock<String>>,
-    http_client: Arc<reqwest::Client>,
+    http_client: reqwest::Client,
     _refresh_token_thread: JoinHandle<()>, // TODO: should join handle when drop ?
 }
 
@@ -31,13 +31,8 @@ struct AccessTokenResponse {
     expires_in: u64,
 }
 
-async fn get_access_token(client: &reqwest::Client, url: &str) -> Result<AccessTokenResponse> {
-    let resp = client
-        .get(url)
-        .send()
-        .await?
-        .json::<AccessTokenResponse>()
-        .await?;
+fn get_access_token(client: &reqwest::blocking::Client, url: &str) -> Result<AccessTokenResponse> {
+    let resp = client.get(url).send()?.json::<AccessTokenResponse>()?;
 
     if resp.errcode != 0 {
         return Err(Error::GetAccessTokenFailed(resp.errcode, resp.errmsg));
@@ -47,30 +42,46 @@ async fn get_access_token(client: &reqwest::Client, url: &str) -> Result<AccessT
 }
 
 fn start_refresh_token_thread(
-    mut runtime: Runtime,
-    client: Arc<reqwest::Client>,
     url: String,
-    mut expires_in: u64,
     access_token: Arc<RwLock<String>>,
+    sender: Sender<Result<()>>,
 ) -> JoinHandle<()> {
     thread::Builder::new()
         .name("wx work client".to_string())
-        .spawn(move || loop {
-            //let delay_time = expires_in / 2;
-            let delay_time = expires_in / 2;
-            let f = async {
-                delay_for(Duration::from_secs(delay_time)).await;
-                get_access_token(&client, &url).await
+        .spawn(move || {
+            let client = reqwest::blocking::Client::new();
+
+            let d = match get_access_token(&client, &url) {
+                Ok(d) => d,
+                Err(e) => {
+                    sender.send(Err(e)).unwrap();
+                    return;
+                }
             };
 
-            match runtime.block_on(f) {
-                Ok(d) => {
-                    expires_in = d.expires_in;
-                    let mut token = access_token.write().unwrap();
-                    *token = d.access_token;
-                    info!("update token success, expires_in {}", d.expires_in);
+            let mut expires_in = d.expires_in;
+            {
+                let mut token = access_token.write().unwrap();
+                *token = d.access_token;
+            }
+            info!("init token success, expires_in {}", d.expires_in);
+            sender.send(Ok(())).unwrap();
+
+            loop {
+                //let delay_time = expires_in / 2;
+                let delay_time = expires_in / 2;
+
+                thread::sleep(Duration::from_secs(delay_time));
+
+                match get_access_token(&client, &url) {
+                    Ok(d) => {
+                        expires_in = d.expires_in;
+                        let mut token = access_token.write().unwrap();
+                        *token = d.access_token;
+                        info!("update token success, expires_in {}", d.expires_in);
+                    }
+                    Err(e) => error!("refresh token failed, reason: {}", e),
                 }
-                Err(e) => error!("refresh token failed, reason: {}", e),
             }
         })
         .unwrap()
@@ -83,24 +94,16 @@ impl Client {
             WX_URL, corp_id, corp_secret
         );
 
-        let mut runtime = Builder::new()
-            .enable_all()
-            .threaded_scheduler()
-            .build()
-            .unwrap();
+        let http_client = reqwest::Client::new();
+        let (tx, rx) = mpsc::channel();
 
-        let http_client = Arc::new(reqwest::Client::new());
-        let resp = runtime.block_on(get_access_token(&http_client, &url))?;
+        let access_token = Arc::new(RwLock::new("".to_string()));
 
-        let access_token = Arc::new(RwLock::new(resp.access_token));
+        let _refresh_token_thread = start_refresh_token_thread(url, access_token.clone(), tx);
 
-        let _refresh_token_thread = start_refresh_token_thread(
-            runtime,
-            http_client.clone(),
-            url,
-            resp.expires_in,
-            access_token.clone(),
-        );
+        rx.recv().unwrap()?;
+
+        info!("construct Client success");
 
         let ret = Client {
             access_token,
