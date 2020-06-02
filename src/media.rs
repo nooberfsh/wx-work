@@ -24,8 +24,11 @@ pub struct UploadFileResponse {
     errcode: u64,
     errmsg: String,
     #[serde(rename = "type")]
-    pub ty: Option<String>,
+    #[serde(default)]
+    pub ty: String,
+    #[serde(default)]
     pub media_id: String,
+    #[serde(default)]
     pub created_at: String,
 }
 
@@ -33,5 +36,6 @@ pub struct UploadFileResponse {
 pub struct UploadImageResponse {
     errcode: u64,
     errmsg: String,
+    #[serde(default)]
     pub url: String,
 }
