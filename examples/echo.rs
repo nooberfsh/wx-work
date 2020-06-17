@@ -40,7 +40,8 @@ impl App for MyApp {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     dotenv().ok();
     env_logger::init();
 
@@ -48,5 +49,5 @@ fn main() {
     let aes_key = var("AES_KEY").unwrap();
 
     let server = Builder::new(MyApp, token, aes_key).build().unwrap();
-    server.run().unwrap();
+    server.run().await.unwrap();
 }

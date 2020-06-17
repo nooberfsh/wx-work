@@ -17,9 +17,10 @@ impl App for MyApp {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let token = "";
     let aes_key = "";
     let server = Builder::new(MyApp, token, aes_key).build().unwrap();
-    server.run().unwrap();
+    server.run().await.unwrap();
 }
