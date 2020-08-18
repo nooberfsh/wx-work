@@ -47,6 +47,7 @@ pub struct Message {
 enum MessageType {
     Text(Text),
     File(File),
+    Image(Image),
 }
 
 #[derive(Debug, Serialize)]
@@ -56,6 +57,11 @@ struct Text {
 
 #[derive(Debug, Serialize)]
 struct File {
+    media_id: String,
+}
+
+#[derive(Debug, Serialize)]
+struct Image {
     media_id: String,
 }
 
@@ -80,6 +86,11 @@ impl MessageBuilder {
 
     pub fn new_file(agent_id: u64, media_id: String) -> Self {
         let data = MessageType::File(File { media_id });
+        Self::new(agent_id, data)
+    }
+
+    pub fn new_image(agent_id: u64, media_id: String) -> Self {
+        let data = MessageType::Image(Image { media_id });
         Self::new(agent_id, data)
     }
 
@@ -174,6 +185,10 @@ impl Serialize for Message {
             File(t) => {
                 map.serialize_entry("msgtype", "file")?;
                 map.serialize_entry("file", t)?;
+            }
+            Image(t) => {
+                map.serialize_entry("msgtype", "image")?;
+                map.serialize_entry("image", t)?;
             }
         }
 
