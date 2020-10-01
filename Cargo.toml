@@ -8,7 +8,7 @@ license = "MIT"
 repository = "https://github.com/nooberfsh/wx-work"
 homepage = "https://github.com/nooberfsh/wx-work"
 documentation = "https://docs.rs/wx-work"
-keywords = ["weixin", "微信", "企业微信"]
+keywords = ["weixin"]
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
