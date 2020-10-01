@@ -1,5 +1,14 @@
 # 企业微信 sdk
 
+
+## 使用 
+
+```toml
+# Cargo.toml
+[dependencies]
+wx-work = "0.1"
+```
+
 ## Example： 上传文件
 ```rust
 use wx_work::client::Client;
