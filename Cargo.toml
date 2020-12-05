@@ -20,10 +20,6 @@ thiserror = "1.0"
 byteorder = "1"
 xmltree = "0.10"
 log = "0.4"
-actix-web = "2"
-actix-rt = "1"
-async-trait = "0.1"
-futures = "0.3"
 rand = "0.7"
 anyhow = "1.0"
 block-modes = "0.3"
@@ -31,9 +27,15 @@ aes = "0.3"
 hex = "0.4"
 itertools = "0.9"
 serde_json = "1.0"
-reqwest = { version = "0.10" , features = ["json", "blocking"]}
 serde = {version = "1.0", features = ["derive"]}
+# network dependencies
 tokio = { version = "0.2", features = ["full"] }
+reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "json", "blocking"]}
+async-trait = "0.1"
+futures = "0.3"
+actix-web = "2"
+actix-rt = "1"
+
 
 [dev-dependencies]
 dotenv = "0.15"
