@@ -50,7 +50,7 @@ impl<T: App> Server<T> {
     // https://github.com/actix/actix-web/issues/1283
     pub async fn run(self) -> std::io::Result<()> {
         let local = tokio::task::LocalSet::new();
-        let sys = actix_rt::System::run_in_tokio("server", &local);
+        let sys = actix_web::rt::System::run_in_tokio("server", &local);
 
         let server = web::Data::new(self);
         let addr = format!("0.0.0.0:{}", server.port);
