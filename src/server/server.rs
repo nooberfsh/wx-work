@@ -49,24 +49,27 @@ impl<T: App> Server<T> {
     // caller should provide a tokio runtime
     // https://github.com/actix/actix-web/issues/1283
     pub async fn run(self) -> std::io::Result<()> {
-        let local = tokio::task::LocalSet::new();
-        let sys = actix_web::rt::System::run_in_tokio("server", &local);
-
-        let server = web::Data::new(self);
-        let addr = format!("0.0.0.0:{}", server.port);
-        HttpServer::new(move || {
-            ActixApp::new()
-                .app_data(server.clone())
-                .route("/", web::get().to(validate::<T>))
-                .route("/", web::post().to(recv::<T>))
-        })
-        .bind(addr)?
-        .run()
-        .await?;
-
-        sys.await?;
-        Ok(())
+        std::thread::spawn(move || run(self).expect("start server failed"));
+        let ret = futures::future::pending().await;
+        Ok(ret)
     }
+}
+
+// TODO remove this when https://github.com/actix/actix-net/pull/266#issuecomment-808939487 is released
+#[actix_web::main]
+async fn run<T: App>(s: Server<T>) -> std::io::Result<()> {
+    let server = web::Data::new(s);
+    let addr = format!("0.0.0.0:{}", server.port);
+    HttpServer::new(move || {
+        ActixApp::new()
+            .app_data(server.clone())
+            .route("/", web::get().to(validate::<T>))
+            .route("/", web::post().to(recv::<T>))
+    })
+    .bind(addr)?
+    .run()
+    .await?;
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
