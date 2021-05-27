@@ -6,7 +6,7 @@
 ```toml
 # Cargo.toml
 [dependencies]
-wx-work = "0.1"
+wx-work = "0.2"
 ```
 
 ## Example： 上传文件
